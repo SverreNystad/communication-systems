@@ -1,18 +1,18 @@
 @startuml
 actor "User Phone" as UserPhone
 participant "Server" as Server
-participant "Payment Gateway" as PaymentGateway
+participant "Payment Service" as PaymentService
 participant "E Scooter" as EScooter
 
 UserPhone -> Server: Request scooter rental\n(scooter id, payment details)
-Server -> PaymentGateway: Process payment\n(payment details)
+Server -> PaymentService: Process payment\n(payment details)
 alt Payment Successful
-    PaymentGateway --> Server: Payment confirmed
+    PaymentService --> Server: Payment confirmed
     Server -> EScooter: Unlock scooter (open command)
     EScooter --> Server: Scooter unlocked confirmation
     Server -> UserPhone: Rental confirmed\n(scooter unlocked)
 else Payment Failed
-    PaymentGateway --> Server: Payment declined
+    PaymentService --> Server: Payment declined
     Server -> UserPhone: Payment failed\n(rental cancelled)
 end alt
 @enduml

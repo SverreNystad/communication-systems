@@ -5,10 +5,10 @@ participant "E Scooter" as EScooter
 
 UserPhone -> Server: End ride/park scooter\n(location details)
 Server -> EScooter: Lock scooter and detect parking
-EScooter -> Server: Parking status (proper/improper)
+EScooter --> Server: Parking status (proper/improper)
 alt Proper Parking
-    Server -> UserPhone: Parking confirmed
+    Server --> UserPhone: Parking confirmed
 else Improper Parking
-    Server -> UserPhone: Alert: Improper parking.\nPlease reposition scooter.
+    Server --> UserPhone: Alert: Improper parking.\nPlease reposition scooter.
 end alt
 @enduml
