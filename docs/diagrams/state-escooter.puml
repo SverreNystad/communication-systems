@@ -1,0 +1,27 @@
+@startuml
+[*] --> Locked
+
+' When the scooter is locked one can request information about the scooter
+state Locked {
+
+}
+
+state Running {
+}
+
+' Need mqtt topic for this
+Locked --> Locked : Request scooter info\n(credentials, current location)
+
+Locked --> Running : Unlock scooter\n(open command)
+
+' The scooter is unavailable for rental when it is running
+' Only user with the correct credentials can stop the scooter
+' Choice if the scooter is improverly parked the user is notified and still running
+' If the scooter is properly parked the ride ends
+
+state c <<choice>>
+Running --> c : End ride/park scooter\n(location details)
+c --> Running : Improper Parking\n(notify user)
+c --> Locked : Proper Parking\n(parking confirmed and notify user)
+
+@enduml
