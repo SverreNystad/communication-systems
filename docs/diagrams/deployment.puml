@@ -1,0 +1,23 @@
+@startuml
+skinparam componentStyle uml2
+
+node "User Device" {
+    component "Mobile client\n[GUI]" as MobileApp
+}
+
+cloud "Cloud" {
+  node "Server" {
+      component "Application Server\n<<stm>>" as AppServer
+      component "MQTT Broker" as Broker
+      component "Database" as db
+  }
+}
+
+node "E-Scooter" {
+    component "Scooter Control\nEmbedded System\n<<stm>>" as ScooterControl
+}
+
+MobileApp -- Broker : MQTT 
+AppServer -- Broker : MQTT 
+ScooterControl -- Broker : MQTT 
+@enduml
