@@ -1,0 +1,15 @@
+@startuml
+actor "User Phone" as UserPhone
+participant "Server" as Server
+participant "E Scooter" as EScooter
+
+UserPhone -> Server: Request scooter info\n(token, current location)
+alt Authentication Successful
+    Server -> Server: Validate token
+    Server -> EScooter: Request scooter details\n(based on location)
+    EScooter --> Server: Return scooter details\n(location, battery, etc.)
+    Server -> UserPhone: Return scooter details
+else Authentication Failed
+    Server -> UserPhone: Return error\n("Authentication failed")
+end alt
+@enduml
