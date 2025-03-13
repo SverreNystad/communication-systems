@@ -1,23 +1,33 @@
 @startuml
-skinparam componentStyle uml2
 
-node "User Device" {
-    component "Mobile client\n[GUI]" as MobileApp
+node "User Device" #cyan {
+    component "<<artifact>>\nMobile client\n" as MobileApp #yellow
 }
 
-cloud "Cloud" {
-  node "Server" {
-      component "Application Server\n<<stm>>" as AppServer
-      component "MQTT Broker" as Broker
-      component "Database" as db
+cloud "Cloud" #lightcyan {
+  node "Server" #cyan {
+      component "<<artifact>>\nApplication Server" as AppServer #yellow
+      component "<<data base>>\nDatabase" as db #yellow
+      component "<<stm>>\n Server State Machine" as ServerStateMachine #yellow
+  }
+
+  node "Broker" as broker #cyan {
+      component "<<artifact>>\nMQTT Broker" as Broker #yellow
   }
 }
 
-node "E-Scooter" {
-    component "Scooter Control\nEmbedded System\n<<stm>>" as ScooterControl
+node "E-Scooter" #cyan {
+    component "<<artifact>>\nScooter Control\nEmbedded System" as ScooterControl #yellow
+    component "<<stm>>\nScooter State Machine" as ScooterStateMachine #yellow
+    node "Sense Hat\n<<device>>" as SenseHat #cyan
 }
 
-MobileApp -- Broker : MQTT 
-AppServer -- Broker : MQTT 
-ScooterControl -- Broker : MQTT 
-@enduml
+MobileApp "*" -up- "1" Broker #red: <<mqtt>>
+AppServer "1" -- "1" Broker #red: <<mqtt>>
+ScooterControl "*" -up- "1" Broker #red: <<mqtt>>
+
+
+' Manifest the state machines
+ServerStateMachine .> AppServer #green: <<manifest>>
+ScooterStateMachine .> ScooterControl #green: <<manifest>>
+@endumlz
