@@ -1,21 +1,21 @@
 @startuml
-[*] --> Idle
 
-Idle --> ProcessingScooterInfo : Receive scooter info request
-ProcessingScooterInfo --> WaitingForScooterData : Validate token & forward request
-WaitingForScooterData --> Idle : Scooter data received
-WaitingForScooterData --> Idle : Authentication error
+[*] --> User
+PaymentProcessing --> Server : Process Payment
+Server --> PaymentProcessing : Ack or Deny
 
-Idle --> ProcessingRental : Receive rental request
-ProcessingRental --> PaymentProcessing : Process payment
-PaymentProcessing --> WaitingForUnlock : Payment confirmed (send unlock command)
-WaitingForUnlock --> Idle : Unlock confirmed
-PaymentProcessing --> Idle : Payment declined
+Server --> Scooter : Lock and Detect Parking
+Scooter --> Server : Report Scooter Status
 
-Idle --> ProcessingParking : Receive parking request
-ProcessingParking --> LockingScooter : Send lock command
-LockingScooter --> ParkingCheck : Scooter locks & detects parking
-ParkingCheck --> Idle : Parking accepted
-ParkingCheck --> Idle : Improper parking (notify user)
+User --> Server : Request Scooter
+Server --> User : Return Details or Return Error
+
+User --> Server : End Parking
+Server --> User : Parking Confirmed or Reposition Scooter
+
+Server --> Server : Validate Parking
+
+
+
 
 @enduml
