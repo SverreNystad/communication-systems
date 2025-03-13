@@ -4,8 +4,8 @@ participant "Server" as Server
 participant "E Scooter" as EScooter
 
 UserPhone -> Server: Request scooter info\n(credentials, current location)
+Server -> Server: Validate credentials
 alt Authentication Successful
-    Server -> Server: Validate credentials
     Server -> EScooter: Request scooter details\n(based on location)
     EScooter --> Server: Return scooter details\n(location, battery, etc.)
     Server -> UserPhone: Return scooter details
