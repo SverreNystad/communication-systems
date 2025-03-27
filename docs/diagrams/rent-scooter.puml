@@ -10,9 +10,9 @@ alt Payment Successful
     PaymentService --> Server: Payment confirmed
     Server -> EScooter: Unlock scooter (open command)
     EScooter --> Server: Scooter unlocked confirmation
-    Server -> UserPhone: Rental confirmed\n(scooter unlocked)
+    Server --> UserPhone: Rental confirmed\n(scooter unlocked)
 else Payment Failed
     PaymentService --> Server: Payment declined
-    Server -> UserPhone: Payment failed\n(rental cancelled)
+    Server --> UserPhone: Payment failed\n(rental cancelled)
 end alt
 @enduml
