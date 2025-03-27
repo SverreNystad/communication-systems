@@ -1,6 +1,13 @@
 
 
 services:
+  web:
+    build:
+      context: src/app
+      dockerfile: Dockerfile
+
+    ports:
+      - "8501:8501"
   broker:
     image: eclipse-mosquitto
     hostname: mosquitto
