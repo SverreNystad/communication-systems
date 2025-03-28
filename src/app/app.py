@@ -1,15 +1,11 @@
-import streamlit as st
-import pandas as pd
 import numpy as np
+import pandas as pd
 import pydeck as pdk
+import streamlit as st
 
-st.write(
-    "Streamlit has lots of fans in the geo community. 🌍 It supports maps from PyDeck, Folium, Kepler.gl, and others."
-)
+st.write("Streamlit has lots of fans in the geo community. 🌍 It supports maps from PyDeck, Folium, Kepler.gl, and others.")
 
-chart_data = pd.DataFrame(
-    np.random.randn(1000, 2) / [50, 50] + [37.76, -122.4], columns=["lat", "lon"]
-)
+chart_data = pd.DataFrame(np.random.randn(1000, 2) / [50, 50] + [37.76, -122.4], columns=["lat", "lon"])
 
 st.pydeck_chart(
     pdk.Deck(
