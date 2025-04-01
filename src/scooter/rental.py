@@ -1,9 +1,30 @@
-def rent_scooter(scooter_id: str, payment_info: dict, user_id: str):
-    if not is_scooter_available(scooter_id):
-        raise ScooterUnavailableError("Scooter is already in use.")
+from stmpy import Machine
 
-    if not process_payment(payment_info):
-        raise PaymentFailedError("Payment could not be completed.")
+class ScooterRental:
 
-    unlock_scooter(scooter_id)
-    notify_user(user_id, "Scooter unlocked successfully.")
+    def __init__(self, mqtt_client):
+        self.payment_success = False
+        self.mqtt_client = mqtt_client
+
+    def on_locked(self):
+        self.mqtt_client.publish("scooter/state", "locked")
+
+    def on_unlocked(self):
+        self.mqtt_client.publish("scooter/state", "unlocked")
+
+    def payment_check(self):
+        return "Unlocked" if self.payment_success else "Locked"
+
+def create_machine(rental_obj):
+    transitions = [
+        {"source": "initial", "target": "Locked"},
+        {"trigger": "select_scooter", "source": "Locked", "function": rental_obj.payment_check}
+    ]
+
+    states = [
+        {"name": "Locked", "entry": "on_locked"},
+        {"name": "Unlocked", "entry": "on_unlocked"}
+    ]
+
+    return Machine(name="scooter", obj=rental_obj, states=states, transitions=transitions)
+

@@ -1,39 +1,32 @@
-import numpy as np
-import pandas as pd
-import pydeck as pdk
-import streamlit as st
+from scooter.rental import ScooterRental, create_machine
+from stmpy import Driver
+import paho.mqtt.client as mqtt
 
-st.write("Streamlit has lots of fans in the geo community. 🌍 It supports maps from PyDeck, Folium, Kepler.gl, and others.")
+def on_connect(client, userdata, flags, rc):
+    client.subscribe("server/scooter/cmd")
 
-chart_data = pd.DataFrame(np.random.randn(1000, 2) / [50, 50] + [37.76, -122.4], columns=["lat", "lon"])
+def on_message(client, userdata, msg):
+    payload = msg.payload.decode()
+    if payload == "unlock":
+        userdata.payment_success = True
+        userdata.stm.send("select_scooter")
+    elif payload == "fail":
+        userdata.payment_success = False
+        userdata.stm.send("select_scooter")
 
-st.pydeck_chart(
-    pdk.Deck(
-        map_style=None,
-        initial_view_state=pdk.ViewState(
-            latitude=37.76,
-            longitude=-122.4,
-            zoom=11,
-            pitch=50,
-        ),
-        layers=[
-            pdk.Layer(
-                "HexagonLayer",
-                data=chart_data,
-                get_position="[lon, lat]",
-                radius=200,
-                elevation_scale=4,
-                elevation_range=[0, 1000],
-                pickable=True,
-                extruded=True,
-            ),
-            pdk.Layer(
-                "ScatterplotLayer",
-                data=chart_data,
-                get_position="[lon, lat]",
-                get_color="[200, 30, 0, 160]",
-                get_radius=200,
-            ),
-        ],
-    )
-)
+rental = ScooterRental(None)
+mqtt_client = mqtt.Client(userdata=rental)
+mqtt_client.on_connect = on_connect
+mqtt_client.on_message = on_message
+rental.mqtt_client = mqtt_client
+
+machine = create_machine(rental)
+rental.stm = machine
+
+driver = Driver()
+driver.add_machine(machine)
+driver.start()
+
+mqtt_client.connect("localhost", 1883)
+mqtt_client.loop_forever()
+
