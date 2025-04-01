@@ -3,7 +3,7 @@ from stmpy import Driver
 import paho.mqtt.client as mqtt
 
 def on_connect(client, userdata, flags, rc):
-    print("✅ Scooter connected to MQTT broker")
+    print("Scooter connected to MQTT broker.")
     client.subscribe("server/scooter/cmd")
 
 def on_message(client, userdata, msg):
