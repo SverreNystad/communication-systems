@@ -19,7 +19,7 @@ class ServerApp:
     def is_user(self):
         return self.user_type == "user"
 
-    def payment_accepted(self):
+    def payment_accepted(self): #It is stuck on the payment
         result = random.choice([True, False])
         print(f"💳 Payment check: {'accepted' if result else 'rejected'}")
         return "ScooterRunning" if result else "Idle"

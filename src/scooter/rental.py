@@ -1,4 +1,5 @@
-from stmpy import Machine
+from stmpy import Machine, Driver
+import paho.mqtt.client as mqtt
 import random
 
 class ScooterRental:
@@ -49,3 +50,39 @@ def create_machine(rental: ScooterRental):
 
     return Machine(name="scooter", states=states, transitions=transitions, obj=rental)
 
+
+
+# ------------------------
+# MQTT Setup
+# ------------------------
+
+def on_connect(client, userdata, flags, rc):
+    print("✅ Scooter connected to MQTT broker.")
+    client.subscribe("server/scooter/cmd")  
+
+def on_message(client, userdata, msg):
+    payload = msg.payload.decode()
+    print(f"📩 MQTT message received: {payload}")
+
+    if payload == "evt_unlock":
+        scooter.stm.send("evt_login")
+
+
+# -----------------------
+# Server Entry
+# -----------------------
+scooter = ScooterRental()
+
+
+mqtt_client = mqtt.Client(client_id="", userdata=scooter, protocol=mqtt.MQTTv311)
+mqtt_client.on_connect = on_connect
+mqtt_client.on_message = on_message
+scooter.mqtt_client = mqtt_client
+
+
+machine = create_machine(scooter)
+scooter.stm = machine
+
+driver = Driver()
+driver.add_machine(machine)
+driver.start()
