@@ -21,10 +21,8 @@ class AppUI:
         match choice.lower():
             case "1":
                 self.send("evt_login_user")
-                self.stm.send("evt_login_user")
             case "2":
                 self.send("evt_login_admin")
-                self.stm.send("evt_login_admin")
             case "0":
                 print("Goodbye!")
                 exit()
@@ -45,7 +43,6 @@ class AppUI:
             self.send("evt_recieved_close_request")
         elif choice == "3":
             self.send("evt_logout")
-            self.stm.send("evt_logout")
         else:
             print("Invalid choice.")
         self.stm.send("restart")
@@ -65,7 +62,6 @@ class AppUI:
             self.send("evt_activate")
         elif choice == "4":
             self.send("evt_logout")
-            self.stm.send("evt_logout")
         else:
             print("Invalid choice.")
         self.stm.send("restart")
@@ -104,6 +100,18 @@ def create_machine(app: AppUI):
 
 def on_connect(client, userdata, flags, rc):
     print("✅ Connected to MQTT broker.")
+    client.subscribe("user/ack")
+
+def on_message(client, userdata, msg):
+    payload = msg.payload.decode()
+    print(f"📩 MQTT message received: {payload}")
+
+    if payload == "evt_login_admin":
+        userdata.stm.send("evt_login_admin")
+    elif payload == "evt_login_user":
+        userdata.stm.send("evt_login_user")
+    elif payload == "evt_logout":
+        userdata.stm.send("evt_logout")
 
 
 # -----------------------

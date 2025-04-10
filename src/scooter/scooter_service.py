@@ -95,6 +95,10 @@ class ScooterManager:
         return scooter_info
 
 
+    def send_acknowledge(self, acktype):
+        print("📩 Sending acknowledgment to server.")
+        self.mqtt_client.publish("scooter/ack", acktype)
+
 def create_machine(scooter: ScooterManager):
     states = [
         {"name": "Locked", "entry": "close_scooter"},
@@ -134,6 +138,7 @@ def on_message(client, userdata, msg):
 
     if payload == "evt_unlock":
         userdata.stm.send("evt_unlock")
+
     elif payload == "evt_park_scooter":
         userdata.stm.send("evt_park_scooter")
     elif payload == "evt_request_info":

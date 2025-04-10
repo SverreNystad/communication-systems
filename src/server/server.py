@@ -26,10 +26,10 @@ class ServerApp:
     def is_user(self):
         return self.user_type == "user"
 
-    def payment_accepted(self):  # It is stuck on the payment? Not in the correct state?
+    def payment_accepted(self):  
         result = random.choice([True, False])
         print(f"💳 Payment check: {'accepted' if result else 'rejected'}")
-        return "ScooterRunning" if result else "Idle"
+        return result
 
     # ------------------------
     # Entry/Exit actions
@@ -51,6 +51,10 @@ class ServerApp:
             return "User"
         else:
             return "Idle"
+        
+    def send_acknowledge(self, acktype):
+        print("📩 Sending acknowledgment to user.")
+        self.mqtt_client.publish("user/ack", acktype)
 
 
 # ------------------------
@@ -78,18 +82,10 @@ def create_machine(server: ServerApp):
         # Logout
         {"trigger": "evt_logout", "source": "Admin", "target": "Idle"},
         {"trigger": "evt_logout", "source": "User", "target": "Idle"},
-        # User requests to open scooter
-        {
-            "trigger": "evt_recieved_open_request",
-            "source": "User",
-            "function": server.payment_accepted,
-        },
+        # User requests to open scooter and scooter acks
+        {"trigger": "ack_open_request", "source": "User", "target": "ScooterRunning"},
         # User ends ride
-        {
-            "trigger": "evt_recieved_close_request",
-            "source": "ScooterRunning",
-            "target": "Idle",
-        },
+        {"trigger": "evt_ack_close_request","source": "ScooterRunning","target": "Idle"},
     ]
 
     return Machine(name="server", states=states, transitions=transitions, obj=server)
@@ -104,6 +100,7 @@ def on_connect(client, userdata, flags, rc):
     print("✅ Server connected to MQTT broker.")
     client.subscribe("user/command")  # User interface publishes here
     client.subscribe("scooter/state")
+    client.subscribe("scooter/ack")  # Scooter publishes here
 
 
 def on_message(client, userdata, msg):
@@ -113,16 +110,26 @@ def on_message(client, userdata, msg):
     if payload == "evt_login_admin":
         userdata.user_type = "admin"
         userdata.stm.send("evt_login")
+        userdata.send_acknowledge("evt_login_admin")
     elif payload == "evt_login_user":
         userdata.user_type = "user"
         userdata.stm.send("evt_login")
+        userdata.send_acknowledge("evt_login_user")
     elif payload == "evt_logout":
         userdata.user_type = None
         userdata.stm.send("evt_logout")
+        userdata.send_acknowledge("evt_logout")
     elif payload == "evt_recieved_open_request":
-        userdata.stm.send("evt_recieved_open_request")
+        if userdata.payment_accepted():
+            userdata.send_evt_unlock()
+        else:
+            print("❌ Payment rejected.")
+    elif payload == "evt_ack_open_request":
+        userdata.stm.send("evt_ack_open_request")
     elif payload == "evt_recieved_close_request":
-        userdata.stm.send("evt_recieved_close_request")
+        userdata.send_evt_lock()
+    elif payload == "evt_ack_close_request":
+        userdata.stm.send("evt_ack_close_request")
     else:
         print("⚠️ Unknown command.")
 
