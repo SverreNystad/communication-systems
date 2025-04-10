@@ -1,6 +1,13 @@
+from enum import StrEnum
 from stmpy import Machine, Driver
 import paho.mqtt.client as mqtt
 import random
+
+
+class AccessLevel(StrEnum):
+    ADMIN = "admin"
+    USER = "user"
+
 
 class ServerApp:
 
@@ -19,7 +26,7 @@ class ServerApp:
     def is_user(self):
         return self.user_type == "user"
 
-    def payment_accepted(self): #It is stuck on the payment? Not in the correct state?
+    def payment_accepted(self):  # It is stuck on the payment? Not in the correct state?
         result = random.choice([True, False])
         print(f"💳 Payment check: {'accepted' if result else 'rejected'}")
         return "ScooterRunning" if result else "Idle"
@@ -36,9 +43,11 @@ class ServerApp:
         print("🔒 Sending lock command to scooter.")
         self.mqtt_client.publish("server/scooter/cmd", "evt_park_scooter")
 
+
 # ------------------------
 # STMPY Machine Setup
 # ------------------------
+
 
 def create_machine(server: ServerApp):
     states = [
@@ -50,22 +59,27 @@ def create_machine(server: ServerApp):
 
     transitions = [
         {"source": "initial", "target": "Idle"},
-
         # Login branching
         {"trigger": "evt_login", "source": "Idle", "function": "login_branch"},
-
         # Logout
         {"trigger": "evt_logout", "source": "Admin", "target": "Idle"},
         {"trigger": "evt_logout", "source": "User", "target": "Idle"},
-
         # User requests to open scooter
-        {"trigger": "evt_recieved_open_request", "source": "User", "function": "payment_accepted"},
-
+        {
+            "trigger": "evt_recieved_open_request",
+            "source": "User",
+            "function": "payment_accepted",
+        },
         # User ends ride
-        {"trigger": "evt_recieved_close_request", "source": "ScooterRunning", "target": "Idle"},
+        {
+            "trigger": "evt_recieved_close_request",
+            "source": "ScooterRunning",
+            "target": "Idle",
+        },
     ]
 
     return Machine(name="server", states=states, transitions=transitions, obj=server)
+
 
 # This function wraps the login logic into a choice
 def login_branch(self):
@@ -76,6 +90,7 @@ def login_branch(self):
     else:
         return "Idle"
 
+
 # Inject dynamic function
 ServerApp.login_branch = login_branch
 
@@ -83,10 +98,12 @@ ServerApp.login_branch = login_branch
 # MQTT Setup
 # ------------------------
 
+
 def on_connect(client, userdata, flags, rc):
     print("✅ Server connected to MQTT broker.")
     client.subscribe("user/command")  # User interface publishes here
     client.subscribe("scooter/state")
+
 
 def on_message(client, userdata, msg):
     payload = msg.payload.decode()
@@ -108,24 +125,25 @@ def on_message(client, userdata, msg):
     else:
         print("⚠️ Unknown command.")
 
+
 # ------------------------
 # App Entry
 # ------------------------
+if __name__ == "__main__":
 
-server = ServerApp()
+    server = ServerApp()
 
-mqtt_client = mqtt.Client(client_id="", userdata=server, protocol=mqtt.MQTTv311)
-mqtt_client.on_connect = on_connect
-mqtt_client.on_message = on_message
-server.mqtt_client = mqtt_client
+    mqtt_client = mqtt.Client(client_id="", userdata=server, protocol=mqtt.MQTTv311)
+    mqtt_client.on_connect = on_connect
+    mqtt_client.on_message = on_message
+    server.mqtt_client = mqtt_client
 
-machine = create_machine(server)
-server.stm = machine
+    machine = create_machine(server)
+    server.stm = machine
 
-driver = Driver()
-driver.add_machine(machine)
-driver.start()
+    driver = Driver()
+    driver.add_machine(machine)
+    driver.start()
 
-mqtt_client.connect("localhost", 1883)
-mqtt_client.loop_forever()
-
+    mqtt_client.connect("localhost", 1883)
+    mqtt_client.loop_forever()
