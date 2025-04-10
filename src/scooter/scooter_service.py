@@ -138,9 +138,10 @@ def on_message(client, userdata, msg):
 
     if payload == "evt_unlock":
         userdata.stm.send("evt_unlock")
-
+        userdata.send_acknowledge("evt_ack_open_request")
     elif payload == "evt_park_scooter":
         userdata.stm.send("evt_park_scooter")
+        userdata.send_acknowledge("evt_ack_close_request")
     elif payload == "evt_request_info":
         info = userdata.get_scooter_info()
         print("Scooter Info:", info)

@@ -107,6 +107,7 @@ def on_message(client, userdata, msg):
     payload = msg.payload.decode()
     print(f"📩 MQTT message received: {payload}")
 
+    # User interface
     if payload == "evt_login_admin":
         userdata.user_type = "admin"
         userdata.stm.send("evt_login")
@@ -119,16 +120,19 @@ def on_message(client, userdata, msg):
         userdata.user_type = None
         userdata.stm.send("evt_logout")
         userdata.send_acknowledge("evt_logout")
+    #elif payload == "evt_request_info": # We haven't covered this case yet 
+
+    #Scooter
     elif payload == "evt_recieved_open_request":
         if userdata.payment_accepted():
             userdata.send_evt_unlock()
         else:
             print("❌ Payment rejected.")
-    elif payload == "evt_ack_open_request":
+    elif payload == "evt_ack_open_request": #ACK
         userdata.stm.send("evt_ack_open_request")
     elif payload == "evt_recieved_close_request":
         userdata.send_evt_lock()
-    elif payload == "evt_ack_close_request":
+    elif payload == "evt_ack_close_request": #ACK
         userdata.stm.send("evt_ack_close_request")
     else:
         print("⚠️ Unknown command.")
