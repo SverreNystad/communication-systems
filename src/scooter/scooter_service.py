@@ -3,7 +3,8 @@ import paho.mqtt.client as mqtt
 import random
 
 from dataclasses import dataclass
-from sense_hat import SenseHat
+
+# from sense_hat import SenseHat
 
 
 @dataclass
@@ -24,8 +25,8 @@ class ScooterManager:
     def __init__(self):
         self.mqtt_client = None
         self.stm = None
-        self.sense = SenseHat()
-        self.sense.clear()
+        self.sense = None  # SenseHat()
+        # self.sense.clear()
 
     def open_scooter(self):
         print("🟢 Scooter unlocked and ride started.")
@@ -94,7 +95,7 @@ class ScooterManager:
         return scooter_info
 
 
-def create_machine(rental: ScooterManager):
+def create_machine(scooter: ScooterManager):
     states = [
         {"name": "Locked", "entry": "close_scooter"},
         {"name": "Running", "entry": "open_scooter"},
@@ -107,10 +108,14 @@ def create_machine(rental: ScooterManager):
         {"trigger": "evt_deactivate", "source": "Locked", "target": "Maintenance"},
         {"trigger": "evt_activate", "source": "Maintenance", "target": "Locked"},
         {"trigger": "evt_unlock", "source": "Locked", "target": "Running"},
-        {"trigger": "evt_park_scooter", "source": "Running","function": "is_parking_valid",},
+        {
+            "trigger": "evt_park_scooter",
+            "source": "Running",
+            "function": scooter.is_parking_valid,
+        },
     ]
 
-    return Machine(name="scooter", states=states, transitions=transitions, obj=rental)
+    return Machine(name="scooter", states=states, transitions=transitions, obj=scooter)
 
 
 # ------------------------
@@ -128,7 +133,7 @@ def on_message(client, userdata, msg):
     print(f"📩 MQTT message received: {payload}")
 
     if payload == "evt_unlock":
-        userdata.stm.send("evt_unlock")  
+        userdata.stm.send("evt_unlock")
     elif payload == "evt_park_scooter":
         userdata.stm.send("evt_park_scooter")
     elif payload == "evt_request_info":
@@ -153,3 +158,6 @@ if __name__ == "__main__":
     driver = Driver()
     driver.add_machine(machine)
     driver.start()
+
+    mqtt_client.connect("localhost", 1883)
+    mqtt_client.loop_forever()
