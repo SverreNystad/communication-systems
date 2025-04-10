@@ -43,6 +43,15 @@ class ServerApp:
         print("🔒 Sending lock command to scooter.")
         self.mqtt_client.publish("server/scooter/cmd", "evt_park_scooter")
 
+    def login_branch(self) -> str:
+        print("🔑 Login branch triggered.")
+        if self.is_admin():
+            return "Admin"
+        elif self.is_user():
+            return "User"
+        else:
+            return "Idle"
+
 
 # ------------------------
 # STMPY Machine Setup
@@ -60,7 +69,12 @@ def create_machine(server: ServerApp):
     transitions = [
         {"source": "initial", "target": "Idle"},
         # Login branching
-        {"trigger": "evt_login", "source": "Idle", "function": "login_branch"},
+        # {"trigger": "evt_login", "source": "Idle", "function": "login_branch"},
+        {
+            "trigger": "evt_login",
+            "source": "Idle",
+            "function": server.login_branch,
+        },
         # Logout
         {"trigger": "evt_logout", "source": "Admin", "target": "Idle"},
         {"trigger": "evt_logout", "source": "User", "target": "Idle"},
@@ -68,7 +82,7 @@ def create_machine(server: ServerApp):
         {
             "trigger": "evt_recieved_open_request",
             "source": "User",
-            "function": "payment_accepted",
+            "function": server.payment_accepted,
         },
         # User ends ride
         {
@@ -80,19 +94,6 @@ def create_machine(server: ServerApp):
 
     return Machine(name="server", states=states, transitions=transitions, obj=server)
 
-
-# This function wraps the login logic into a choice
-def login_branch(self):
-    if self.is_admin():
-        return "Admin"
-    elif self.is_user():
-        return "User"
-    else:
-        return "Idle"
-
-
-# Inject dynamic function
-ServerApp.login_branch = login_branch
 
 # ------------------------
 # MQTT Setup
