@@ -1,6 +1,7 @@
 from stmpy import Machine, Driver
 import paho.mqtt.client as mqtt
 
+
 class AppUI:
 
     def __init__(self):
@@ -16,18 +17,21 @@ class AppUI:
         print("2. Login as Admin")
         print("0. Exit")
         choice = input("Select: ")
-        if choice == "1":
-            self.send("evt_login_user")
-            self.stm.send("evt_login_user")
-        elif choice == "2":
-            self.send("evt_login_admin")
-            self.stm.send("evt_login_admin")
-        elif choice == "0":
-            print("Goodbye!")
-            exit()
-        else:
-            print("Invalid choice.")
-            self.stm.send("restart")
+        print("You selected:", choice)
+        match choice.lower():
+            case "1":
+                self.send("evt_login_user")
+                self.stm.send("evt_login_user")
+            case "2":
+                self.send("evt_login_admin")
+                self.stm.send("evt_login_admin")
+            case "0":
+                print("Goodbye!")
+                exit()
+
+            case _:
+                print("Invalid choice.")
+                self.stm.send("restart")
 
     def show_user_menu(self):
         print("\n== User Menu ==")
@@ -66,9 +70,11 @@ class AppUI:
             print("Invalid choice.")
         self.stm.send("restart")
 
+
 # -----------------------
 # STMPY Machine
 # -----------------------
+
 
 def create_machine(app: AppUI):
     states = [
@@ -90,12 +96,15 @@ def create_machine(app: AppUI):
 
     return Machine(name="app_ui", states=states, transitions=transitions, obj=app)
 
+
 # -----------------------
 # MQTT Setup
 # -----------------------
 
+
 def on_connect(client, userdata, flags, rc):
     print("✅ Connected to MQTT broker.")
+
 
 # -----------------------
 # App Entry
