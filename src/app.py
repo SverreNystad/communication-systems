@@ -1,6 +1,8 @@
 from stmpy import Machine, Driver
 import paho.mqtt.client as mqtt
 
+from broker import MQTT_BROKER, MQTT_PORT
+
 
 class AppUI:
 
@@ -26,7 +28,6 @@ class AppUI:
             case "0":
                 print("Goodbye!")
                 exit()
-
             case _:
                 print("Invalid choice.")
                 self.stm.send("restart")
@@ -45,7 +46,7 @@ class AppUI:
             self.send("evt_logout")
         else:
             print("Invalid choice.")
-        self.stm.send("restart")
+            self.stm.send("restart")
 
     def show_admin_menu(self):
         print("\n== Admin Menu ==")
@@ -64,7 +65,7 @@ class AppUI:
             self.send("evt_logout")
         else:
             print("Invalid choice.")
-        self.stm.send("restart")
+            self.stm.send("restart")
 
 
 # -----------------------
@@ -102,6 +103,7 @@ def on_connect(client, userdata, flags, rc):
     print("✅ Connected to MQTT broker.")
     client.subscribe("user/ack")
 
+
 def on_message(client, userdata, msg):
     payload = msg.payload.decode()
     print(f"📩 MQTT message received: {payload}")
@@ -114,25 +116,20 @@ def on_message(client, userdata, msg):
         userdata.stm.send("evt_logout")
 
 
-# -----------------------
-# App Entry
-# -----------------------
+if __name__ == "__main__":
+    app = AppUI()
 
-app = AppUI()
+    mqtt_client = mqtt.Client(client_id="", userdata=app, protocol=mqtt.MQTTv311)
+    mqtt_client.on_connect = on_connect
+    mqtt_client.on_message = on_message
+    app.mqtt_client = mqtt_client
 
-mqtt_client = mqtt.Client(client_id="", userdata=app, protocol=mqtt.MQTTv311)
-mqtt_client.on_connect = on_connect
-app.mqtt_client = mqtt_client
+    machine = create_machine(app)
+    app.stm = machine
 
-machine = create_machine(app)
-app.stm = machine
+    driver = Driver()
+    driver.add_machine(machine)
+    driver.start()
 
-driver = Driver()
-driver.add_machine(machine)
-driver.start()
-
-mqtt_client.connect("localhost", 1883)
-mqtt_client.loop_start()
-
-# Start by triggering the initial view
-app.stm.send("restart")
+    mqtt_client.connect(MQTT_BROKER, MQTT_PORT)
+    mqtt_client.loop_start()

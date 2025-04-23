@@ -3,10 +3,19 @@ from stmpy import Machine, Driver
 import paho.mqtt.client as mqtt
 import random
 
+from broker import MQTT_BROKER, MQTT_PORT, Command
+
 
 class AccessLevel(StrEnum):
     ADMIN = "admin"
     USER = "user"
+
+
+class State(StrEnum):
+    IDLE = "Idle"
+    ADMIN = "Admin"
+    USER = "User"
+    SCOOTER_RUNNING = "ScooterRunning"
 
 
 class ServerApp:
@@ -14,22 +23,14 @@ class ServerApp:
     def __init__(self):
         self.stm = None
         self.mqtt_client = None
-        self.user_type = None  # "admin", "user", or None
+        self.user_type: AccessLevel = None
 
-    # ------------------------
-    # Choice guard functions
-    # ------------------------
-
-    def is_admin(self):
-        return self.user_type == "admin"
-
-    def is_user(self):
-        return self.user_type == "user"
-
-    def payment_accepted(self):  
+    def payment_accepted(self):
+        """Randomly decide if the payment is accepted.
+        Returns the next state (ScooterRunning or Idle)."""
         result = random.choice([True, False])
         print(f"💳 Payment check: {'accepted' if result else 'rejected'}")
-        return result
+        return State.SCOOTER_RUNNING if result else State.IDLE
 
     # ------------------------
     # Entry/Exit actions
@@ -43,18 +44,18 @@ class ServerApp:
         print("🔒 Sending lock command to scooter.")
         self.mqtt_client.publish("server/scooter/cmd", "evt_park_scooter")
 
-    def login_branch(self) -> str:
+    def login_branch(self):
         print("🔑 Login branch triggered.")
-        if self.is_admin():
-            return "Admin"
-        elif self.is_user():
-            return "User"
-        else:
-            return "Idle"
-        
-    def send_acknowledge(self, acktype):
-        print("📩 Sending acknowledgment to user.")
-        self.mqtt_client.publish("user/ack", acktype)
+        match self.user_type:
+            case AccessLevel.ADMIN:
+                print("🔑 Admin login.")
+                return State.ADMIN
+            case AccessLevel.USER:
+                print("🔑 User login.")
+                return State.USER
+            case _:
+                print("⚠️ Unknown user type.")
+                return State.IDLE
 
 
 # ------------------------
@@ -64,28 +65,38 @@ class ServerApp:
 
 def create_machine(server: ServerApp):
     states = [
-        {"name": "Idle"},
-        {"name": "Admin"},
-        {"name": "User"},
-        {"name": "ScooterRunning", "entry": "send_evt_unlock", "exit": "send_evt_lock"},
+        {"name": State.IDLE},
+        {"name": State.ADMIN},
+        {"name": State.USER},
+        {
+            "name": State.SCOOTER_RUNNING,
+            "entry": Command.UNLOCK_SCOOTER,
+            "exit": Command.LOCK_SCOOTER,
+        },
     ]
 
     transitions = [
-        {"source": "initial", "target": "Idle"},
-        # Login branching
-        # {"trigger": "evt_login", "source": "Idle", "function": "login_branch"},
+        {"source": "initial", "target": State.IDLE},
         {
-            "trigger": "evt_login",
-            "source": "Idle",
+            "trigger": Command.LOGIN,
+            "source": State.IDLE,
             "function": server.login_branch,
         },
         # Logout
-        {"trigger": "evt_logout", "source": "Admin", "target": "Idle"},
-        {"trigger": "evt_logout", "source": "User", "target": "Idle"},
+        {"trigger": "evt_logout", "source": State.ADMIN, "target": State.IDLE},
+        {"trigger": "evt_logout", "source": State.USER, "target": State.IDLE},
         # User requests to open scooter and scooter acks
-        {"trigger": "ack_open_request", "source": "User", "target": "ScooterRunning"},
+        {
+            "trigger": "ack_open_request",
+            "source": State.USER,
+            "target": State.SCOOTER_RUNNING,
+        },
         # User ends ride
-        {"trigger": "evt_ack_close_request","source": "ScooterRunning","target": "Idle"},
+        {
+            "trigger": "evt_ack_close_request",
+            "source": State.SCOOTER_RUNNING,
+            "target": State.IDLE,
+        },
     ]
 
     return Machine(name="server", states=states, transitions=transitions, obj=server)
@@ -104,7 +115,7 @@ def on_connect(client, userdata, flags, rc):
 
 
 def on_message(client, userdata, msg):
-    payload = msg.payload.decode()
+    payload: str = msg.payload.decode()
     print(f"📩 MQTT message received: {payload}")
 
     # User interface
@@ -120,29 +131,25 @@ def on_message(client, userdata, msg):
         userdata.user_type = None
         userdata.stm.send("evt_logout")
         userdata.send_acknowledge("evt_logout")
-    #elif payload == "evt_request_info": # We haven't covered this case yet 
+    # elif payload == "evt_request_info": # We haven't covered this case yet
 
-    #Scooter
+    # Scooter
     elif payload == "evt_recieved_open_request":
         if userdata.payment_accepted():
             userdata.send_evt_unlock()
         else:
             print("❌ Payment rejected.")
-    elif payload == "evt_ack_open_request": #ACK
+    elif payload == "evt_ack_open_request":  # ACK
         userdata.stm.send("evt_ack_open_request")
     elif payload == "evt_recieved_close_request":
         userdata.send_evt_lock()
-    elif payload == "evt_ack_close_request": #ACK
+    elif payload == "evt_ack_close_request":  # ACK
         userdata.stm.send("evt_ack_close_request")
     else:
         print("⚠️ Unknown command.")
 
 
-# ------------------------
-# App Entry
-# ------------------------
 if __name__ == "__main__":
-
     server = ServerApp()
 
     mqtt_client = mqtt.Client(client_id="", userdata=server, protocol=mqtt.MQTTv311)
@@ -157,5 +164,5 @@ if __name__ == "__main__":
     driver.add_machine(machine)
     driver.start()
 
-    mqtt_client.connect("localhost", 1883)
+    mqtt_client.connect(MQTT_BROKER, MQTT_PORT)
     mqtt_client.loop_forever()

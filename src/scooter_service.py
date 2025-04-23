@@ -4,6 +4,8 @@ import random
 
 from dataclasses import dataclass
 
+from broker import MQTT_BROKER, MQTT_PORT
+
 # from sense_hat import SenseHat
 
 
@@ -94,10 +96,10 @@ class ScooterManager:
         )
         return scooter_info
 
-
     def send_acknowledge(self, acktype):
         print("📩 Sending acknowledgment to server.")
         self.mqtt_client.publish("scooter/ack", acktype)
+
 
 def create_machine(scooter: ScooterManager):
     states = [
@@ -165,5 +167,5 @@ if __name__ == "__main__":
     driver.add_machine(machine)
     driver.start()
 
-    mqtt_client.connect("localhost", 1883)
+    mqtt_client.connect(MQTT_BROKER, MQTT_PORT)
     mqtt_client.loop_forever()
