@@ -26,3 +26,4 @@ class Command(StrEnum):
     ACK_CLOSE_REQUEST = "evt_ack_close_request"
     UNLOCK_SCOOTER = "send_evt_unlock"
     LOCK_SCOOTER = "send_evt_lock"
+    REQUEST_INFO = "evt_request_info"

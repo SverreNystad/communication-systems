@@ -119,10 +119,10 @@ def on_connect(client, userdata, flags, rc):
 
 
 def on_message(client, userdata, msg):
-    payload: str = msg.payload.decode()
+    payload = msg.payload.decode()
     print(f"📩 MQTT message received: {payload}")
 
-    # User interface
+    # Login/Logout
     if payload == Command.LOGIN_ADMIN:
         userdata.user_type = AccessLevel.ADMIN
         userdata.stm.send(Command.LOGIN)
@@ -135,8 +135,12 @@ def on_message(client, userdata, msg):
         userdata.user_type = None
         userdata.stm.send(Command.LOGOUT)
         userdata.send_acknowledge(Command.LOGOUT)
+    # UC-1: Access scooter info
+    elif payload == Command.REQUEST_INFO:
+        print("🔄 Forwarding scooter info request.")
+        userdata.mqtt_client.publish(Topic.SCOOTER_CMD, Command.REQUEST_INFO)
 
-    # Scooter
+    # Scooter operations
     elif payload == Command.RECEIVED_OPEN_REQUEST:
         if userdata.payment_accepted():
             userdata.send_evt_unlock()

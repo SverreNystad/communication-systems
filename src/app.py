@@ -1,7 +1,9 @@
+import json
+
 import paho.mqtt.client as mqtt
 from stmpy import Driver, Machine
 
-from broker import MQTT_BROKER, MQTT_PORT, Topic
+from broker import MQTT_BROKER, MQTT_PORT, Command, Topic
 
 
 class AppUI:
@@ -9,7 +11,7 @@ class AppUI:
         self.stm = None
         self.mqtt_client = None
 
-    def send(self, event: str):
+    def send(self, event):
         self.mqtt_client.publish(Topic.USER_CMD, event)
 
     def show_welcome(self):
@@ -18,12 +20,11 @@ class AppUI:
         print("2. Login as Admin")
         print("0. Exit")
         choice = input("Select: ")
-        print("You selected:", choice)
-        match choice.lower():
+        match choice:
             case "1":
-                self.send("evt_login_user")
+                self.send(Command.LOGIN_USER)
             case "2":
-                self.send("evt_login_admin")
+                self.send(Command.LOGIN_ADMIN)
             case "0":
                 print("Goodbye!")
                 exit()
@@ -38,11 +39,11 @@ class AppUI:
         print("3. Logout")
         choice = input("Select: ")
         if choice == "1":
-            self.send("evt_recieved_open_request")
+            self.send(Command.RECEIVED_OPEN_REQUEST)
         elif choice == "2":
-            self.send("evt_recieved_close_request")
+            self.send(Command.RECEIVED_CLOSE_REQUEST)
         elif choice == "3":
-            self.send("evt_logout")
+            self.send(Command.LOGOUT)
         else:
             print("Invalid choice.")
             self.stm.send("restart")
@@ -55,16 +56,22 @@ class AppUI:
         print("4. Logout")
         choice = input("Select: ")
         if choice == "1":
-            self.send("evt_request_info")
+            self.send(Command.REQUEST_INFO)
         elif choice == "2":
             self.send("evt_deactivate")
         elif choice == "3":
             self.send("evt_activate")
         elif choice == "4":
-            self.send("evt_logout")
+            self.send(Command.LOGOUT)
         else:
             print("Invalid choice.")
             self.stm.send("restart")
+
+    def show_scooter_info(self, info):
+        print("\n== Scooter Information ==")
+        for k, v in info.items():
+            print(f"{k.replace('_', ' ').title()}: {v}")
+        self.stm.send("restart")
 
 
 def create_machine(app: AppUI):
@@ -73,41 +80,45 @@ def create_machine(app: AppUI):
         {"name": "UserMenu", "entry": "show_user_menu"},
         {"name": "AdminMenu", "entry": "show_admin_menu"},
     ]
-
     transitions = [
         {"source": "initial", "target": "Welcome"},
-        {"trigger": "evt_login_user", "source": "Welcome", "target": "UserMenu"},
-        {"trigger": "evt_login_admin", "source": "Welcome", "target": "AdminMenu"},
-        {"trigger": "evt_logout", "source": "UserMenu", "target": "Welcome"},
-        {"trigger": "evt_logout", "source": "AdminMenu", "target": "Welcome"},
+        {"trigger": Command.LOGIN_USER, "source": "Welcome", "target": "UserMenu"},
+        {"trigger": Command.LOGIN_ADMIN, "source": "Welcome", "target": "AdminMenu"},
+        {"trigger": Command.LOGOUT, "source": "UserMenu", "target": "Welcome"},
+        {"trigger": Command.LOGOUT, "source": "AdminMenu", "target": "Welcome"},
         {"trigger": "restart", "source": "UserMenu", "target": "UserMenu"},
         {"trigger": "restart", "source": "AdminMenu", "target": "AdminMenu"},
         {"trigger": "restart", "source": "Welcome", "target": "Welcome"},
     ]
-
     return Machine(name="app_ui", states=states, transitions=transitions, obj=app)
 
 
 def on_connect(client, userdata, flags, rc):
     print("✅ Connected to MQTT broker.")
     client.subscribe(Topic.USER_ACK)
+    client.subscribe(Topic.SCOOTER_INFO)
 
 
 def on_message(client, userdata, msg):
+    topic = msg.topic
     payload = msg.payload.decode()
-    print(f"📩 MQTT message received: {payload}")
-
-    if payload == "evt_login_admin":
-        userdata.stm.send("evt_login_admin")
-    elif payload == "evt_login_user":
-        userdata.stm.send("evt_login_user")
-    elif payload == "evt_logout":
-        userdata.stm.send("evt_logout")
+    print(f"📩 MQTT message received on {topic}: {payload}")
+    if topic == Topic.USER_ACK:
+        if payload == Command.LOGIN_ADMIN:
+            userdata.stm.send(Command.LOGIN_ADMIN)
+        elif payload == Command.LOGIN_USER:
+            userdata.stm.send(Command.LOGIN_USER)
+        elif payload == Command.LOGOUT:
+            userdata.stm.send(Command.LOGOUT)
+        elif payload == "payment_failed":
+            print("❌ Payment failed. Please try again.")
+    elif topic == Topic.SCOOTER_INFO:
+        info = json.loads(payload)
+        userdata.show_scooter_info(info)
 
 
 if __name__ == "__main__":
     app = AppUI()
-
     mqtt_client = mqtt.Client(client_id="", userdata=app, protocol=mqtt.MQTTv311)
     mqtt_client.on_connect = on_connect
     mqtt_client.on_message = on_message
@@ -115,7 +126,6 @@ if __name__ == "__main__":
 
     machine = create_machine(app)
     app.stm = machine
-
     driver = Driver()
     driver.add_machine(machine)
     driver.start()

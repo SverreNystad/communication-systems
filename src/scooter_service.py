@@ -1,10 +1,11 @@
+import json
 import random
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 import paho.mqtt.client as mqtt
 from stmpy import Driver, Machine
 
-from broker import MQTT_BROKER, MQTT_PORT, Topic
+from broker import MQTT_BROKER, MQTT_PORT, Command, Topic
 
 
 @dataclass
@@ -107,13 +108,12 @@ def create_machine(scooter: ScooterManager):
 
     transitions = [
         {"source": "initial", "target": "Locked"},
-        {"trigger": "evt_request_info", "source": "Locked", "target": "Locked"},
+        {"trigger": Command.REQUEST_INFO, "source": "Locked", "target": "Locked"},
         {"trigger": "evt_deactivate", "source": "Locked", "target": "Maintenance"},
         {"trigger": "evt_activate", "source": "Maintenance", "target": "Locked"},
         {"trigger": "evt_unlock", "source": "Locked", "target": "Running"},
         {"trigger": "evt_park_scooter", "source": "Running", "function": scooter.is_parking_valid},
     ]
-
     return Machine(name="scooter", states=states, transitions=transitions, obj=scooter)
 
 
@@ -126,20 +126,22 @@ def on_message(client, userdata, msg):
     payload = msg.payload.decode()
     print(f"📩 MQTT message received: {payload}")
 
-    if payload == "evt_unlock":
+    if payload == Command.UNLOCK_SCOOTER:
         userdata.stm.send("evt_unlock")
-        userdata.send_acknowledge("evt_ack_open_request")
-    elif payload == "evt_park_scooter":
+        userdata.send_acknowledge(Command.ACK_OPEN_REQUEST)
+    elif payload == Command.LOCK_SCOOTER:
         userdata.stm.send("evt_park_scooter")
-        userdata.send_acknowledge("evt_ack_close_request")
-    elif payload == "evt_request_info":
+        userdata.send_acknowledge(Command.ACK_CLOSE_REQUEST)
+    elif payload == Command.REQUEST_INFO:
         info = userdata.get_scooter_info()
-        print("Scooter Info:", info)
+        info_json = json.dumps(asdict(info))
+        userdata.mqtt_client.publish(Topic.SCOOTER_INFO, info_json)
+    else:
+        print("⚠️ Unknown scooter command.")
 
 
 if __name__ == "__main__":
     scooter = ScooterManager()
-
     mqtt_client = mqtt.Client(client_id="", userdata=scooter, protocol=mqtt.MQTTv311)
     mqtt_client.on_connect = on_connect
     mqtt_client.on_message = on_message
@@ -147,7 +149,6 @@ if __name__ == "__main__":
 
     machine = create_machine(scooter)
     scooter.stm = machine
-
     driver = Driver()
     driver.add_machine(machine)
     driver.start()
