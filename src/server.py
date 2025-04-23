@@ -74,7 +74,6 @@ def create_machine(server: ServerApp):
         {"name": State.USER},
         {
             "name": State.SCOOTER_RUNNING,
-            "entry": Command.UNLOCK_SCOOTER,
             "exit": Command.LOCK_SCOOTER,
         },
     ]
@@ -119,8 +118,9 @@ def on_connect(client, userdata, flags, rc):
 
 
 def on_message(client, userdata, msg):
+    topic = msg.topic
     payload = msg.payload.decode()
-    print(f"📩 MQTT message received: {payload}")
+    print(f"📩 MQTT message received on {topic}: {payload}")
 
     # Login/Logout
     if payload == Command.LOGIN_ADMIN:
@@ -142,7 +142,7 @@ def on_message(client, userdata, msg):
 
     # Scooter operations
     elif payload == Command.RECEIVED_OPEN_REQUEST:
-        if userdata.payment_accepted():
+        if userdata.payment_accepted() == State.SCOOTER_RUNNING:
             userdata.send_evt_unlock()
         else:
             print("❌ Payment rejected.")

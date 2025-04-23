@@ -112,6 +112,7 @@ def create_machine(scooter: ScooterManager):
         {"trigger": "evt_deactivate", "source": "Locked", "target": "Maintenance"},
         {"trigger": "evt_activate", "source": "Maintenance", "target": "Locked"},
         {"trigger": "evt_unlock", "source": "Locked", "target": "Running"},
+        {"trigger": "evt_unlock", "source": "Running", "target": "Running"},
         {"trigger": "evt_park_scooter", "source": "Running", "function": scooter.is_parking_valid},
     ]
     return Machine(name="scooter", states=states, transitions=transitions, obj=scooter)

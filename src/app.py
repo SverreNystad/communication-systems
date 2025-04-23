@@ -40,8 +40,10 @@ class AppUI:
         choice = input("Select: ")
         if choice == "1":
             self.send(Command.RECEIVED_OPEN_REQUEST)
+            self.stm.send("restart")
         elif choice == "2":
             self.send(Command.RECEIVED_CLOSE_REQUEST)
+            self.stm.send("restart")
         elif choice == "3":
             self.send(Command.LOGOUT)
         else:
@@ -97,6 +99,7 @@ def on_connect(client, userdata, flags, rc):
     print("✅ Connected to MQTT broker.")
     client.subscribe(Topic.USER_ACK)
     client.subscribe(Topic.SCOOTER_INFO)
+    client.subscribe(Topic.SCOOTER_STATE)
 
 
 def on_message(client, userdata, msg):
@@ -116,10 +119,19 @@ def on_message(client, userdata, msg):
         info = json.loads(payload)
         userdata.show_scooter_info(info)
 
+    elif topic == Topic.SCOOTER_STATE:
+        # only two states come from scooter_service: "running" (unlocked) or "locked"
+        if payload == "running":
+            print("🟢 Scooter rented successfully! Enjoy your ride.")
+        elif payload == "locked":
+            print("🔒 Scooter returned successfully. Thanks for riding!")
+        else:
+            print(f"Scooter now in state: {payload}")
+
 
 if __name__ == "__main__":
     app = AppUI()
-    mqtt_client = mqtt.Client(client_id="", userdata=app, protocol=mqtt.MQTTv311)
+    mqtt_client = mqtt.Client(client_id="app", userdata=app, protocol=mqtt.MQTTv311)
     mqtt_client.on_connect = on_connect
     mqtt_client.on_message = on_message
     app.mqtt_client = mqtt_client
