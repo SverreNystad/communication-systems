@@ -1,28 +1,6 @@
 
 
 services:
-  web:
-    build:
-      context: src/app
-      dockerfile: Dockerfile
-    ports:
-      - "8501:8501"
-    depends_on:
-      - broker
-  
-  scooter:
-    build:
-      context: src/scooter
-      dockerfile: Dockerfile
-    depends_on:
-      - broker
-  server:
-    build:
-      context: src/server
-      dockerfile: Dockerfile
-    depends_on:
-      - broker
-
   broker:
     image: eclipse-mosquitto
     hostname: mosquitto
