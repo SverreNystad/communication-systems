@@ -1,9 +1,10 @@
-from enum import StrEnum
-from stmpy import Machine, Driver
-import paho.mqtt.client as mqtt
 import random
+from enum import StrEnum
 
-from broker import MQTT_BROKER, MQTT_PORT, Command
+import paho.mqtt.client as mqtt
+from stmpy import Driver, Machine
+
+from broker import MQTT_BROKER, MQTT_PORT, Command, Topic
 
 
 class AccessLevel(StrEnum):
@@ -19,7 +20,6 @@ class State(StrEnum):
 
 
 class ServerApp:
-
     def __init__(self):
         self.stm = None
         self.mqtt_client = None
@@ -38,11 +38,11 @@ class ServerApp:
 
     def send_evt_unlock(self):
         print("🟢 Sending unlock command to scooter.")
-        self.mqtt_client.publish("server/scooter/cmd", "evt_unlock")
+        self.mqtt_client.publish(Topic.SCOOTER_CMD, Command.UNLOCK_SCOOTER)
 
     def send_evt_lock(self):
         print("🔒 Sending lock command to scooter.")
-        self.mqtt_client.publish("server/scooter/cmd", "evt_park_scooter")
+        self.mqtt_client.publish(Topic.SCOOTER_CMD, Command.LOCK_SCOOTER)
 
     def login_branch(self):
         print("🔑 Login branch triggered.")
@@ -56,6 +56,10 @@ class ServerApp:
             case _:
                 print("⚠️ Unknown user type.")
                 return State.IDLE
+
+    def send_acknowledge(self, acktype: str):
+        print(f"📩 Acknowledging {acktype} to user.")
+        self.mqtt_client.publish(Topic.USER_ACK, acktype)
 
 
 # ------------------------
@@ -83,17 +87,17 @@ def create_machine(server: ServerApp):
             "function": server.login_branch,
         },
         # Logout
-        {"trigger": "evt_logout", "source": State.ADMIN, "target": State.IDLE},
-        {"trigger": "evt_logout", "source": State.USER, "target": State.IDLE},
+        {"trigger": Command.LOGOUT, "source": State.ADMIN, "target": State.IDLE},
+        {"trigger": Command.LOGOUT, "source": State.USER, "target": State.IDLE},
         # User requests to open scooter and scooter acks
         {
-            "trigger": "ack_open_request",
+            "trigger": Command.ACK_OPEN_REQUEST,
             "source": State.USER,
             "target": State.SCOOTER_RUNNING,
         },
         # User ends ride
         {
-            "trigger": "evt_ack_close_request",
+            "trigger": Command.ACK_CLOSE_REQUEST,
             "source": State.SCOOTER_RUNNING,
             "target": State.IDLE,
         },
@@ -109,9 +113,9 @@ def create_machine(server: ServerApp):
 
 def on_connect(client, userdata, flags, rc):
     print("✅ Server connected to MQTT broker.")
-    client.subscribe("user/command")  # User interface publishes here
-    client.subscribe("scooter/state")
-    client.subscribe("scooter/ack")  # Scooter publishes here
+    client.subscribe(Topic.USER_CMD)
+    client.subscribe(Topic.SCOOTER_STATE)
+    client.subscribe(Topic.SCOOTER_ACK)
 
 
 def on_message(client, userdata, msg):
@@ -119,32 +123,32 @@ def on_message(client, userdata, msg):
     print(f"📩 MQTT message received: {payload}")
 
     # User interface
-    if payload == "evt_login_admin":
-        userdata.user_type = "admin"
-        userdata.stm.send("evt_login")
-        userdata.send_acknowledge("evt_login_admin")
-    elif payload == "evt_login_user":
-        userdata.user_type = "user"
-        userdata.stm.send("evt_login")
-        userdata.send_acknowledge("evt_login_user")
-    elif payload == "evt_logout":
+    if payload == Command.LOGIN_ADMIN:
+        userdata.user_type = AccessLevel.ADMIN
+        userdata.stm.send(Command.LOGIN)
+        userdata.send_acknowledge(Command.LOGIN_ADMIN)
+    elif payload == Command.LOGIN_USER:
+        userdata.user_type = AccessLevel.USER
+        userdata.stm.send(Command.LOGIN)
+        userdata.send_acknowledge(Command.LOGIN_USER)
+    elif payload == Command.LOGOUT:
         userdata.user_type = None
-        userdata.stm.send("evt_logout")
-        userdata.send_acknowledge("evt_logout")
-    # elif payload == "evt_request_info": # We haven't covered this case yet
+        userdata.stm.send(Command.LOGOUT)
+        userdata.send_acknowledge(Command.LOGOUT)
 
     # Scooter
-    elif payload == "evt_recieved_open_request":
+    elif payload == Command.RECEIVED_OPEN_REQUEST:
         if userdata.payment_accepted():
             userdata.send_evt_unlock()
         else:
             print("❌ Payment rejected.")
-    elif payload == "evt_ack_open_request":  # ACK
-        userdata.stm.send("evt_ack_open_request")
-    elif payload == "evt_recieved_close_request":
+            userdata.send_acknowledge("payment_failed")
+    elif payload == Command.ACK_OPEN_REQUEST:
+        userdata.stm.send(Command.ACK_OPEN_REQUEST)
+    elif payload == Command.RECEIVED_CLOSE_REQUEST:
         userdata.send_evt_lock()
-    elif payload == "evt_ack_close_request":  # ACK
-        userdata.stm.send("evt_ack_close_request")
+    elif payload == Command.ACK_CLOSE_REQUEST:
+        userdata.stm.send(Command.ACK_CLOSE_REQUEST)
     else:
         print("⚠️ Unknown command.")
 

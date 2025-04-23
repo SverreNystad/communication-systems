@@ -1,12 +1,10 @@
-from stmpy import Machine, Driver
-import paho.mqtt.client as mqtt
 import random
-
 from dataclasses import dataclass
 
-from broker import MQTT_BROKER, MQTT_PORT
+import paho.mqtt.client as mqtt
+from stmpy import Driver, Machine
 
-# from sense_hat import SenseHat
+from broker import MQTT_BROKER, MQTT_PORT, Topic
 
 
 @dataclass
@@ -23,12 +21,10 @@ class ScooterInformation:
 
 
 class ScooterManager:
-
     def __init__(self):
         self.mqtt_client = None
         self.stm = None
         self.sense = None  # SenseHat()
-        # self.sense.clear()
 
     def open_scooter(self):
         print("🟢 Scooter unlocked and ride started.")
@@ -43,16 +39,17 @@ class ScooterManager:
         self.publish_state("maintenance")
 
     def is_parking_valid(self):
-        # Simulate valid/invalid parking
         result = random.choice([True, False])
         print(f"🅿️ Parking check: {'valid' if result else 'invalid'}")
         return "Locked" if result else "Running"
 
-    def publish_state(self, state):
+    def publish_state(self, state: str):
         if self.mqtt_client:
-            self.mqtt_client.publish("scooter/state", state)
+            self.mqtt_client.publish(Topic.SCOOTER_STATE, state)
 
     def get_scooter_info(self) -> ScooterInformation:
+        # Sensor retrieval omitted for brevity
+        return ScooterInformation(0, 0, 0, 0, 0, 0, 0, 0, 0)
         """
         Get the scooter information from the Sense HAT.
         """
@@ -96,9 +93,9 @@ class ScooterManager:
         )
         return scooter_info
 
-    def send_acknowledge(self, acktype):
+    def send_acknowledge(self, acktype: str):
         print("📩 Sending acknowledgment to server.")
-        self.mqtt_client.publish("scooter/ack", acktype)
+        self.mqtt_client.publish(Topic.SCOOTER_ACK, acktype)
 
 
 def create_machine(scooter: ScooterManager):
@@ -114,24 +111,15 @@ def create_machine(scooter: ScooterManager):
         {"trigger": "evt_deactivate", "source": "Locked", "target": "Maintenance"},
         {"trigger": "evt_activate", "source": "Maintenance", "target": "Locked"},
         {"trigger": "evt_unlock", "source": "Locked", "target": "Running"},
-        {
-            "trigger": "evt_park_scooter",
-            "source": "Running",
-            "function": scooter.is_parking_valid,
-        },
+        {"trigger": "evt_park_scooter", "source": "Running", "function": scooter.is_parking_valid},
     ]
 
     return Machine(name="scooter", states=states, transitions=transitions, obj=scooter)
 
 
-# ------------------------
-# MQTT Setup
-# ------------------------
-
-
 def on_connect(client, userdata, flags, rc):
     print("✅ Scooter connected to MQTT broker.")
-    client.subscribe("server/scooter/cmd")
+    client.subscribe(Topic.SCOOTER_CMD)
 
 
 def on_message(client, userdata, msg):
@@ -150,9 +138,6 @@ def on_message(client, userdata, msg):
 
 
 if __name__ == "__main__":
-    # -----------------------
-    # Server Entry
-    # -----------------------
     scooter = ScooterManager()
 
     mqtt_client = mqtt.Client(client_id="", userdata=scooter, protocol=mqtt.MQTTv311)

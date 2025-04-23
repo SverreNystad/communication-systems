@@ -1,17 +1,16 @@
-from stmpy import Machine, Driver
 import paho.mqtt.client as mqtt
+from stmpy import Driver, Machine
 
-from broker import MQTT_BROKER, MQTT_PORT
+from broker import MQTT_BROKER, MQTT_PORT, Topic
 
 
 class AppUI:
-
     def __init__(self):
         self.stm = None
         self.mqtt_client = None
 
-    def send(self, event):
-        self.mqtt_client.publish("user/command", event)
+    def send(self, event: str):
+        self.mqtt_client.publish(Topic.USER_CMD, event)
 
     def show_welcome(self):
         print("\n== Welcome ==")
@@ -68,11 +67,6 @@ class AppUI:
             self.stm.send("restart")
 
 
-# -----------------------
-# STMPY Machine
-# -----------------------
-
-
 def create_machine(app: AppUI):
     states = [
         {"name": "Welcome", "entry": "show_welcome"},
@@ -94,14 +88,9 @@ def create_machine(app: AppUI):
     return Machine(name="app_ui", states=states, transitions=transitions, obj=app)
 
 
-# -----------------------
-# MQTT Setup
-# -----------------------
-
-
 def on_connect(client, userdata, flags, rc):
     print("✅ Connected to MQTT broker.")
-    client.subscribe("user/ack")
+    client.subscribe(Topic.USER_ACK)
 
 
 def on_message(client, userdata, msg):
