@@ -1,7 +1,7 @@
 from enum import StrEnum
 
 MQTT_BROKER = "10.22.128.63"  # "localhost"
-MQTT_PORT = 1883
+MQTT_PORT = 1884
 
 
 class Topic(StrEnum):
