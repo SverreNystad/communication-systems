@@ -14,10 +14,42 @@ pip install pre-commit
 pre-commit install
 ```
 
+Setup the virtual environment by running the following command in the terminal:
+```bash
+python -m venv venv
+```
+Activate the virtual environment by running the following command in the terminal:
+```bash
+source venv/bin/activate
+```
+
+Install the required packages by running the following command in the terminal:
+```bash
+pip install -r requirements.txt
+```
+
+
 ## Usage
-To run the project, run the following commands in the terminal:
+To run MQTT broker run the following command in the terminal:
 ```bash
 docker compose up --build
+```
+
+### Run Client Application
+Then run the following commands on the client:
+```bash
+python src/app.py
+```
+
+### Run Server Application Raspberry Pi:
+Run the following commands on the server:
+```bash
+python src/server.py
+```
+
+### Run Scooter Service on Raspberry Pi (Sense HAT):
+```python
+python src/scooter_service.py
 ```
 
 
