@@ -1,27 +1,18 @@
 @startuml
 [*] --> Locked
 
-' When the scooter is locked one can request information about the scooter
-state Locked {
+Locked : entry / close_scooter()
+Running : entry / open_scooter()
+Maintenance : entry / deactivate_scooter()
 
-}
-
-state Running {
-}
-
-' Need mqtt topic for this
-Locked --> Locked : Request scooter info\n(credentials, current location)
-
-Locked --> Running : Unlock scooter\n(open command)
-
-' The scooter is unavailable for rental when it is running
-' Only user with the correct credentials can stop the scooter
-' Choice if the scooter is improverly parked the user is notified and still running
-' If the scooter is properly parked the ride ends
+Locked --> Locked : evt_request_info
+Locked --> Maintenance : evt_deactivate
+Maintenance --> Locked : evt_activate
+Locked --> Running : evt_unlock
 
 state c <<choice>>
-Running --> c : End ride/park scooter\n(location details)
-c --> Running : Improper Parking\n(notify user)
-c --> Locked : Proper Parking\n(parking confirmed and notify user)
+Running --> c : evt_park_scooter
+c --> Locked : is_parking_valid() == True
+c --> Running : is_parking_valid() == False
 
 @enduml
