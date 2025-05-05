@@ -1,21 +1,26 @@
 @startuml
+[*] --> Idle
 
-[*] --> User
-PaymentProcessing --> Server : Process Payment
-Server --> PaymentProcessing : Ack or Deny
+Admin: request_info()
+User: request_info()
+Idle --> c : evt_login
 
-Server --> Scooter : Lock and Detect Parking
-Scooter --> Server : Report Scooter Status
+state c <<choice>>
+c --> Admin : is_admin() == True
+c --> User : is_user() == True
+c --> Idle : else
 
-User --> Server : Request Scooter
-Server --> User : Return Details or Return Error
+Admin --> Idle : evt_logout
+User --> Idle : evt_logout
 
-User --> Server : End Parking
-Server --> User : Parking Confirmed or Reposition Scooter
+User --> c2 : evt_ack_open_request
 
-Server --> Server : Validate Parking
+state c2 <<choice>>
+c2 --> Idle : payment_accepted() == False
+c2 --> ScooterRunning : payment_accepted() == True
 
+ScooterRunning : entry / send_evt_unlock()
+ScooterRunning : exit / send_evt_lock()
 
-
-
+ScooterRunning --> Idle : evt_ack_close_request
 @enduml
