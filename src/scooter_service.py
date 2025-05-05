@@ -23,31 +23,49 @@ class ScooterInformation:
 
 
 class ScooterManager:
+    # Define color map for different states (RGB)
+    COLORS = {
+        "running": (0, 255, 0),  # green
+        "locked": (255, 0, 0),  # red
+        "maintenance": (255, 255, 0),  # yellow
+        "parking_valid": (0, 0, 255),  # blue
+        "parking_invalid": (255, 0, 0),  # red
+    }
+
     def __init__(self):
         self.mqtt_client = None
         self.stm = None
         self.sense = SenseHat()
 
     def open_scooter(self):
-        print("🟢 Scooter unlocked and ride started.")
-        self.sense.show_message("🟢 Scooter unlocked and ride started.")
+        msg = "🟢 Scooter unlocked and ride started."
+        col = self.COLORS["running"]
+        print(msg)
+        self.sense.show_message(msg, scroll_speed=0.05, text_colour=col, back_colour=(0, 0, 0))
         self.publish_state("running")
 
     def close_scooter(self):
-        print("🔒 Scooter locked and idle.")
-        self.sense.show_message("🔒 Scooter locked and idle.")
+        msg = "🔒 Scooter locked and idle."
+        col = self.COLORS["locked"]
+        print(msg)
+        self.sense.show_message(msg, scroll_speed=0.05, text_colour=col, back_colour=(0, 0, 0))
         self.publish_state("locked")
 
     def deactivate_scooter(self):
-        print("⚠️ Scooter deactivated for maintenance.")
-        self.sense.show_message("⚠️ Scooter deactivated for maintenance.")
+        msg = "⚠️ Scooter deactivated for maintenance."
+        col = self.COLORS["maintenance"]
+        print(msg)
+        self.sense.show_message(msg, scroll_speed=0.05, text_colour=col, back_colour=(0, 0, 0))
         self.publish_state("maintenance")
 
     def is_parking_valid(self):
-        result = random.choice([True, False])
-        print(f"🅿️ Parking check: {'valid' if result else 'invalid'}")
-        self.sense.show_message("🅿️ Parking check: valid" if result else "🅿️ Parking check: invalid")
-        return "Locked" if result else "Running"
+        valid = random.choice([True, False])
+        key = "parking_valid" if valid else "parking_invalid"
+        msg = f"🅿️ Parking check: {'valid' if valid else 'invalid'}"
+        col = self.COLORS[key]
+        print(f"{msg}")
+        self.sense.show_message(msg, scroll_speed=0.05, text_colour=col, back_colour=(0, 0, 0))
+        return "Locked" if valid else "Running"
 
     def publish_state(self, state: str):
         if self.mqtt_client:
@@ -85,7 +103,7 @@ class ScooterManager:
         p = round(p, 1)
         h = round(h, 1)
 
-        scooter_info = ScooterInformation(
+        return ScooterInformation(
             temperature=t,
             pressure=p,
             humidity=h,
@@ -96,7 +114,6 @@ class ScooterManager:
             acceleration_y=y,
             acceleration_z=z,
         )
-        return scooter_info
 
     def send_acknowledge(self, acktype: str):
         print("📩 Sending acknowledgment to server.")
@@ -119,6 +136,7 @@ def create_machine(scooter: ScooterManager):
         {"trigger": "evt_unlock", "source": "Running", "target": "Running"},
         {"trigger": "evt_park_scooter", "source": "Running", "function": scooter.is_parking_valid},
     ]
+
     return Machine(name="scooter", states=states, transitions=transitions, obj=scooter)
 
 
