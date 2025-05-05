@@ -2,3 +2,4 @@ pre-commit
 paho-mqtt
 sense-hat
 stmpy
+python-dotenv
