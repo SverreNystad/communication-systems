@@ -36,7 +36,8 @@ class AppUI:
         print("\n== User Menu ==")
         print("1. Rent scooter")
         print("2. End ride")
-        print("3. Logout")
+        print("3. Request scooter info")
+        print("4. Logout")
         choice = input("Select: ")
         if choice == "1":
             self.send(Command.RECEIVED_OPEN_REQUEST)
@@ -45,6 +46,9 @@ class AppUI:
             self.send(Command.RECEIVED_CLOSE_REQUEST)
             self.stm.send("restart")
         elif choice == "3":
+            self.send(Command.REQUEST_INFO)
+            self.stm.send("restart")
+        elif choice == "4":
             self.send(Command.LOGOUT)
         else:
             print("Invalid choice.")
