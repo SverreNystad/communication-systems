@@ -60,9 +60,9 @@ class AppUI:
         if choice == "1":
             self.send(Command.REQUEST_INFO)
         elif choice == "2":
-            self.send("evt_deactivate")
+            self.send(Command.EVT_DEACTIVATE)
         elif choice == "3":
-            self.send("evt_activate")
+            self.send(Command.EVT_ACTIVATE)
         elif choice == "4":
             self.send(Command.LOGOUT)
         else:

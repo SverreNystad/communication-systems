@@ -140,6 +140,15 @@ def on_message(client, userdata, msg):
         print("🔄 Forwarding scooter info request.")
         userdata.mqtt_client.publish(Topic.SCOOTER_CMD, Command.REQUEST_INFO)
 
+    # Admin wants to deactivate / activate the scooter
+    elif payload == Command.EVT_DEACTIVATE:
+        print("🔄 Forwarding deactivate command to scooter.")
+        userdata.mqtt_client.publish(Topic.SCOOTER_CMD, Command.EVT_DEACTIVATE)
+
+    elif payload == Command.EVT_ACTIVATE:
+        print("🔄 Forwarding activate command to scooter.")
+        userdata.mqtt_client.publish(Topic.SCOOTER_CMD, Command.EVT_ACTIVATE)
+
     # Scooter operations
     elif payload == Command.RECEIVED_OPEN_REQUEST:
         if userdata.payment_accepted() == State.SCOOTER_RUNNING:

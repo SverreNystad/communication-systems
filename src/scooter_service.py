@@ -159,6 +159,15 @@ def on_message(client, userdata, msg):
         info = userdata.get_scooter_info()
         info_json = json.dumps(asdict(info))
         userdata.mqtt_client.publish(Topic.SCOOTER_INFO, info_json)
+    # Admin maintenance commands
+    elif payload == Command.EVT_DEACTIVATE:
+        print("⚠️ Admin requested maintenance mode.")
+        userdata.stm.send("evt_deactivate")
+
+    elif payload == Command.EVT_ACTIVATE:
+        print("✅ Admin re-activated scooter.")
+        userdata.stm.send("evt_activate")
+
     else:
         print("⚠️ Unknown scooter command.")
 
