@@ -127,6 +127,7 @@ def on_message(client, userdata, msg):
             print("🔒 Scooter returned successfully. Thanks for riding!")
         else:
             print(f"Scooter now in state: {payload}")
+        userdata.stm.send("restart")
 
 
 if __name__ == "__main__":
