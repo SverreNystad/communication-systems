@@ -3,6 +3,7 @@ import random
 from dataclasses import asdict, dataclass
 
 import paho.mqtt.client as mqtt
+from sense_hat import SenseHat
 from stmpy import Driver, Machine
 
 from broker import MQTT_BROKER, MQTT_PORT, Command, Topic
@@ -25,23 +26,27 @@ class ScooterManager:
     def __init__(self):
         self.mqtt_client = None
         self.stm = None
-        self.sense = None  # SenseHat()
+        self.sense = SenseHat()
 
     def open_scooter(self):
         print("🟢 Scooter unlocked and ride started.")
+        self.sense.show_message("🟢 Scooter unlocked and ride started.")
         self.publish_state("running")
 
     def close_scooter(self):
         print("🔒 Scooter locked and idle.")
+        self.sense.show_message("🔒 Scooter locked and idle.")
         self.publish_state("locked")
 
     def deactivate_scooter(self):
         print("⚠️ Scooter deactivated for maintenance.")
+        self.sense.show_message("⚠️ Scooter deactivated for maintenance.")
         self.publish_state("maintenance")
 
     def is_parking_valid(self):
         result = random.choice([True, False])
         print(f"🅿️ Parking check: {'valid' if result else 'invalid'}")
+        self.sense.show_message("🅿️ Parking check: valid" if result else "🅿️ Parking check: invalid")
         return "Locked" if result else "Running"
 
     def publish_state(self, state: str):
@@ -50,7 +55,6 @@ class ScooterManager:
 
     def get_scooter_info(self) -> ScooterInformation:
         # Sensor retrieval omitted for brevity
-        return ScooterInformation(0, 0, 0, 0, 0, 0, 0, 0, 0)
         """
         Get the scooter information from the Sense HAT.
         """
