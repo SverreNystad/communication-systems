@@ -1,7 +1,12 @@
+import os
 from enum import StrEnum
+from dotenv import load_dotenv
 
-MQTT_BROKER = "10.0.0.33"  # "localhost"
-MQTT_PORT = 1884
+load_dotenv()
+
+
+MQTT_BROKER = os.getenv("IP", "localhost")
+MQTT_PORT = os.getenv("PORT", 1884)
 
 
 class Topic(StrEnum):
