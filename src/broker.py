@@ -27,3 +27,6 @@ class Command(StrEnum):
     UNLOCK_SCOOTER = "send_evt_unlock"
     LOCK_SCOOTER = "send_evt_lock"
     REQUEST_INFO = "evt_request_info"
+
+    EVT_DEACTIVATE = "evt_deactivate"
+    EVT_ACTIVATE = "evt_activate"
